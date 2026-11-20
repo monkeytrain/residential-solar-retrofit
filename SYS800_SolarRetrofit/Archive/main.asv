@@ -1,0 +1,442 @@
+
+%% SYS 800 - Residential Solar Retrofit Model
+% Baseline Residential System
+
+clear;
+clc;
+close all;
+
+%% 1. Location
+location.city = "Palmdale";
+location.state = "California";
+location.latitude = 34.58;
+location.longitude = -118.12;
+
+%% 2. Residential Building
+house.area_sqft = 1500;
+house.occupants = 3;
+house.type = "Single Family Detached";
+house.heating = "Natural Gas";
+house.cooling = "Central AC";
+house.waterHeating = "Natural Gas";
+
+%% 3. Existing Solar PV System
+pv.capacity_kW = 6;
+pv.capacityScenarios_kW = [4, 6, 8, 10];
+pv.age_years = 10;
+pv.degradationRate = 0.005;
+
+
+%% 4. Battery Storage
+
+% Battery capacity scenarios for future comparison
+battery.capacityScenarios_kWh = [0, 5, 10, 15, 20];
+
+% Initial battery test configuration
+battery.capacity_kWh = 10;
+
+% Battery charging and discharging power limits
+battery.maxChargePower_kW = 5;
+battery.maxDischargePower_kW = 5;
+
+% Battery round-trip efficiency
+battery.roundTripEfficiency = 0.90;
+
+% Initial battery state of charge
+battery.initialSOC_kWh = 0;
+
+%% 5. Simulation Settings
+settings.hoursPerYear = 8760;
+settings.timeStep_hours = 1;
+
+settings.showDiagnosticPlots = true;
+
+%% 6. Display Configuration
+disp("Residential Solar Retrofit Model");
+disp("Location: " + location.city);
+disp("House Size: " + house.area_sqft + " sq ft");
+disp("PV Capacity: " + pv.capacity_kW + " kW");
+
+%% 7. Import PVWatts Hourly Data
+
+% Import the hourly data, starting at row 33
+pvData = readtable("data/pvwatts_hourly.csv", ...
+    "NumHeaderLines", 31, ...
+    "VariableNamingRule", "preserve");
+
+% Check the number of hourly records
+numHours = height(pvData);
+assert(numHours == settings.hoursPerYear, ...
+    "PVWatts data does not contain the expected number of hours.");
+
+disp("Number of hourly records: " + numHours);
+
+% Extract hourly AC output in watts
+solarPower_W = pvData.("AC System Output (W)");
+
+% Convert watts to kilowatt-hours
+solarEnergy_kWh = solarPower_W / 1000 * settings.timeStep_hours;
+
+% Calculate total annual generation
+annualSolar_kWh = sum(solarEnergy_kWh);
+
+%% 8. Prepare Data for Visualization
+
+% Create an hourly time index
+hour = 1:numHours;
+
+% Extract solar irradiance data
+solarIrradiance = pvData.("Plane of Array Irradiance (W/m2)");
+
+%% 9. Diagnostic Plots
+
+if settings.showDiagnosticPlots
+
+    % Plot 1: Solar Generation
+    figure;
+    plot(hour(1:168), solarEnergy_kWh(1:168), ...
+        "LineWidth", 1.5);
+
+    xlabel("Hour of Simulation");
+    ylabel("Solar Generation (kWh)");
+    title("PV Generation - First 7 Days of January");
+    grid on;
+
+    % Plot 2: Solar Generation vs. Irradiance
+    figure;
+
+    yyaxis left;
+    plot(hour(1:168), solarEnergy_kWh(1:168));
+    ylabel("Solar Generation (kWh)");
+
+    yyaxis right;
+    plot(hour(1:168), solarIrradiance(1:168));
+    ylabel("Solar Irradiance (W/m^2)");
+
+    xlabel("Hour of Simulation");
+    title("Solar Generation vs. Irradiance");
+    grid on;
+
+end
+
+%% 10. Apply Solar Panel Degradation
+
+% Calculate remaining performance after 10 years
+degradationFactor = (1 - pv.degradationRate)^pv.age_years;
+
+% Adjust hourly generation for system age
+solarAged_kWh = solarEnergy_kWh .* degradationFactor;
+
+% Calculate annual generation after degradation
+annualSolarAged_kWh = sum(solarAged_kWh);
+
+% Display results
+fprintf("Original Annual Generation: %.1f kWh\n", annualSolar_kWh);
+fprintf("Aged Annual Generation: %.1f kWh\n", annualSolarAged_kWh);
+fprintf("Remaining Performance: %.2f%%\n", degradationFactor * 100);
+
+%% 11. Import ResStock Household Electricity Demand
+
+% ResStock Building ID: 198638
+% Location: Los Angeles County
+% Weather Station: Lancaster Fox Field
+% Building Area: 1690 sq ft
+% Occupants: 3
+% Existing PV: None
+
+% Import 15-minute electricity consumption data
+loadData = parquetread("data/198638-0.parquet");
+
+% Verify the expected number of 15-minute records
+assert(height(loadData) == 35040, ...
+    "ResStock data does not contain 35040 records.");
+
+% Extract electricity consumed during each 15-minute interval (kWh)
+demand15min_kWh = ...
+    loadData.out_electricity_total_energy_consumption;
+
+% Aggregate four 15-minute intervals into each hour
+demandHourly_kWh = sum(reshape(demand15min_kWh, 4, []), 1)';
+
+% Verify the hourly data length
+assert(length(demandHourly_kWh) == settings.hoursPerYear, ...
+    "Hourly demand does not match the simulation duration.");
+
+% Calculate annual electricity consumption
+annualDemand_kWh = sum(demandHourly_kWh);
+
+% Display results
+fprintf("Annual Household Demand: %.1f kWh\n", annualDemand_kWh);
+fprintf("Hourly Demand Records: %d\n", length(demandHourly_kWh));
+
+%% 12. Calculate Baseline Energy Flows
+
+% Calculate hourly electricity flows without battery storage
+baseline = sim.calculateEnergyFlows(demandHourly_kWh, solarAged_kWh);
+
+% Calculate annual grid electricity imports and exports
+annualGridImport_kWh = sum(baseline.gridImport_kWh);
+annualGridExport_kWh = sum(baseline.gridExport_kWh);
+annualSelfConsumed_kWh = sum(baseline.selfConsumed_kWh);
+
+% Display baseline simulation results
+disp(" ");
+disp("=== BASELINE ENERGY FLOW RESULTS ===");
+
+fprintf("Annual Household Demand: %.1f kWh\n", annualDemand_kWh);
+fprintf("Annual Solar Generation: %.1f kWh\n", annualSolarAged_kWh);
+fprintf("Annual Solar Self-Consumed: %.1f kWh\n", annualSelfConsumed_kWh);
+fprintf("Annual Grid Imports: %.1f kWh\n", annualGridImport_kWh);
+fprintf("Annual Grid Exports: %.1f kWh\n", annualGridExport_kWh);
+fprintf("Solar Self-Consumption: %.1f%%\n", ...
+    100 * baseline.selfConsumptionRatio);
+fprintf("Solar Self-Sufficiency: %.1f%%\n", ...
+    100 * baseline.selfSufficiencyRatio);
+
+%% 13. Visualize Baseline Energy Flows
+
+if settings.showDiagnosticPlots
+
+    % Select the first seven days (168 hours)
+    plotHours = 1:168;
+
+    % Plot household demand and solar generation
+    figure;
+
+    plot(plotHours, demandHourly_kWh(plotHours), ...
+        "LineWidth", 1.5);
+    hold on;
+
+    plot(plotHours, solarAged_kWh(plotHours), ...
+        "LineWidth", 1.5);
+
+    hold off;
+
+    xlabel("Hour of Simulation");
+    ylabel("Energy per Hour (kWh)");
+    title("Baseline Household Demand vs. Solar Generation");
+
+    legend("Household Demand", "Solar Generation");
+    grid on;
+
+end
+
+%% 14. Visualize Grid Imports and Exports
+
+if settings.showDiagnosticPlots
+
+    % Plot the first seven days
+    plotHours = 1:168;
+
+    figure;
+
+    plot(plotHours, baseline.gridImport_kWh(plotHours), ...
+        "LineWidth", 1.5);
+    hold on;
+
+    plot(plotHours, baseline.gridExport_kWh(plotHours), ...
+        "LineWidth", 1.5);
+
+    hold off;
+
+    xlabel("Hour of Simulation");
+    ylabel("Energy per Hour (kWh)");
+    title("Baseline Grid Imports vs. Exports");
+
+    legend("Grid Imports", "Grid Exports");
+    grid on;
+
+end
+
+%% 15. Monthly Energy Analysis
+
+% Number of days in each month (non-leap year)
+daysPerMonth = [31 28 31 30 31 30 31 31 30 31 30 31];
+
+% Convert days into hourly boundaries
+monthEndHours = cumsum(daysPerMonth) * 24;
+monthStartHours = [1, monthEndHours(1:end-1) + 1];
+
+% Initialize monthly results
+monthlyDemand_kWh = zeros(12,1);
+monthlySolar_kWh = zeros(12,1);
+monthlyImport_kWh = zeros(12,1);
+monthlyExport_kWh = zeros(12,1);
+
+% Calculate monthly totals
+for m = 1:12
+
+    idx = monthStartHours(m):monthEndHours(m);
+
+    monthlyDemand_kWh(m) = sum(demandHourly_kWh(idx));
+    monthlySolar_kWh(m) = sum(solarAged_kWh(idx));
+    monthlyImport_kWh(m) = sum(baseline.gridImport_kWh(idx));
+    monthlyExport_kWh(m) = sum(baseline.gridExport_kWh(idx));
+
+end
+
+% Display monthly results
+monthlyResults = table( ...
+    string(month(datetime(2025,1:12,1), "name"))', ...
+    monthlyDemand_kWh, ...
+    monthlySolar_kWh, ...
+    monthlyImport_kWh, ...
+    monthlyExport_kWh, ...
+    'VariableNames', { ...
+    'Month', 'Demand_kWh', 'Solar_kWh', ...
+    'GridImport_kWh', 'GridExport_kWh'});
+
+disp(monthlyResults);
+
+%% 16. Simulate Battery Storage
+
+% Run the battery dispatch model for all 8760 hours
+batteryResults = sim.calculateBatteryDispatch( ...
+    demandHourly_kWh, solarAged_kWh, battery);
+
+% Calculate annual energy flows with battery storage
+batteryGridImport_kWh = sum(batteryResults.gridImport_kWh);
+batteryGridExport_kWh = sum(batteryResults.gridExport_kWh);
+
+batteryCharge_kWh = sum(batteryResults.batteryCharge_kWh);
+batteryDischarge_kWh = sum(batteryResults.batteryDischarge_kWh);
+
+% Compare against the no-battery baseline
+importReduction_kWh = annualGridImport_kWh - batteryGridImport_kWh;
+exportReduction_kWh = annualGridExport_kWh - batteryGridExport_kWh;
+
+% Display results
+disp(" ");
+disp("=== BATTERY STORAGE RESULTS ===");
+
+fprintf("Battery Capacity: %.1f kWh\n", battery.capacity_kWh);
+fprintf("Grid Imports Without Battery: %.1f kWh\n", annualGridImport_kWh);
+fprintf("Grid Imports With Battery: %.1f kWh\n", batteryGridImport_kWh);
+fprintf("Grid Exports Without Battery: %.1f kWh\n", annualGridExport_kWh);
+fprintf("Grid Exports With Battery: %.1f kWh\n", batteryGridExport_kWh);
+
+fprintf("Annual Battery Charging: %.1f kWh\n", batteryCharge_kWh);
+fprintf("Annual Battery Discharging: %.1f kWh\n", batteryDischarge_kWh);
+
+fprintf("Grid Import Reduction: %.1f kWh\n", importReduction_kWh);
+fprintf("Grid Export Reduction: %.1f kWh\n", exportReduction_kWh);
+
+
+%% 17. Verify Battery Simulation
+
+% Calculate one-way efficiency
+eta = sqrt(battery.roundTripEfficiency);
+
+% Reconstruct battery state of charge at the start of each hour
+socStart = [battery.initialSOC_kWh; ...
+    batteryResults.stateOfCharge_kWh(1:end-1)];
+
+% Check battery capacity limits
+assert(all(batteryResults.stateOfCharge_kWh >= -1e-9), ...
+    "Battery state of charge fell below zero.");
+
+assert(all(batteryResults.stateOfCharge_kWh <= ...
+    battery.capacity_kWh + 1e-9), ...
+    "Battery exceeded its capacity.");
+
+% Check charging and discharging power limits
+assert(all(batteryResults.batteryCharge_kWh <= ...
+    battery.maxChargePower_kW * settings.timeStep_hours + 1e-9), ...
+    "Battery charging power limit exceeded.");
+
+assert(all(batteryResults.batteryDischarge_kWh <= ...
+    battery.maxDischargePower_kW * settings.timeStep_hours + 1e-9), ...
+    "Battery discharging power limit exceeded.");
+
+% Verify battery state-of-charge changes
+socExpected = socStart + ...
+    batteryResults.batteryCharge_kWh * eta - ...
+    batteryResults.batteryDischarge_kWh / eta;
+
+socError = max(abs( ...
+    batteryResults.stateOfCharge_kWh - socExpected));
+
+% Verify whole-system hourly energy conservation
+% Charging is energy absorbed; discharging is energy supplied.
+energyError = demandHourly_kWh + ...
+    batteryResults.batteryCharge_kWh + ...
+    batteryResults.gridExport_kWh - ...
+    solarAged_kWh - ...
+    batteryResults.batteryDischarge_kWh - ...
+    batteryResults.gridImport_kWh;
+
+maxEnergyError = max(abs(energyError));
+
+assert(socError < 1e-9, ...
+    "Battery state-of-charge conservation failed.");
+
+assert(maxEnergyError < 1e-9, ...
+    "Hourly energy conservation failed.");
+
+disp(" ");
+disp("=== BATTERY VERIFICATION RESULTS ===");
+
+fprintf("Minimum Battery SOC: %.4f kWh\n", ...
+    min(batteryResults.stateOfCharge_kWh));
+
+fprintf("Maximum Battery SOC: %.4f kWh\n", ...
+    max(batteryResults.stateOfCharge_kWh));
+
+fprintf("Maximum SOC Error: %.12f kWh\n", socError);
+
+fprintf("Maximum Hourly Energy Error: %.12f kWh\n", ...
+    maxEnergyError);
+
+disp("All battery verification checks passed.");
+
+%% 18. Battery Capacity Trade Study
+
+% Define battery capacities to evaluate
+capacities = battery.capacityScenarios_kWh;
+
+% Initialize result arrays
+numScenarios = length(capacities);
+
+scenarioImports_kWh = zeros(numScenarios,1);
+scenarioExports_kWh = zeros(numScenarios,1);
+scenarioImportReduction_pct = zeros(numScenarios,1);
+
+% Run each battery capacity scenario
+for i = 1:numScenarios
+
+    % Create a copy of the battery configuration
+    testBattery = battery;
+
+    % Set the battery capacity for this scenario
+    testBattery.capacity_kWh = capacities(i);
+
+    % Simulate the full year
+    scenario = sim.calculateBatteryDispatch( ...
+        demandHourly_kWh, solarAged_kWh, testBattery);
+
+    % Calculate annual grid imports and exports
+    scenarioImports_kWh(i) = sum(scenario.gridImport_kWh);
+    scenarioExports_kWh(i) = sum(scenario.gridExport_kWh);
+
+    % Calculate percentage reduction in grid imports
+    scenarioImportReduction_pct(i) = ...
+        100 * (annualGridImport_kWh - scenarioImports_kWh(i)) ...
+        / annualGridImport_kWh;
+
+end
+
+% Create results table
+batteryComparison = table( ...
+    capacities(:), ...
+    scenarioImports_kWh, ...
+    scenarioExports_kWh, ...
+    scenarioImportReduction_pct, ...
+    'VariableNames', { ...
+    'BatteryCapacity_kWh', ...
+    'GridImports_kWh', ...
+    'GridExports_kWh', ...
+    'ImportReduction_pct'});
+
+disp(" ");
+disp("=== BATTERY CAPACITY COMPARISON ===");
+disp(batteryComparison);
