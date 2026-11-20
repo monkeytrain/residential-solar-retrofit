@@ -325,3 +325,22 @@ for k = 1:numel(allFigures)
     end
 end
 fprintf('\n=== REPORT FIGURES GENERATED: 10 ===\n');
+
+
+%% Figures 11-12 - AHP results (when decision analysis has run)
+if exist('decisionRanking','var') && exist('decisionWeights','var')
+    figure('Name','11 - AHP Criteria Weights','NumberTitle','off','Color','w');
+    ax=axes; bar(ax,100*decisionWeights);
+    xticks(ax,1:3); xticklabels(ax,{'Economics','Affordability','Independence'});
+    ylabel(ax,'Weight (%)'); title(ax,sprintf('AHP Criteria Weights (CR = %.3f)',decisionCR),'Color','k');
+    set(ax,'Color','w','XColor','k','YColor','k'); grid(ax,'on'); ylim(ax,[0 100]);
+    figure('Name','12 - AHP Alternative Ranking','NumberTitle','off','Color','w');
+    ax=axes; rankedDecision=decisionRanking(decisionRanking.Feasible,:);
+    barh(ax,[rankedDecision.NPVUtility*decisionWeights(1),rankedDecision.CostUtility*decisionWeights(2),rankedDecision.SSRUtility*decisionWeights(3)],'stacked');
+    yticks(ax,1:height(rankedDecision)); yticklabels(ax,rankedDecision.Alternative);
+    set(ax,'YDir','reverse','Color','w','XColor','k','YColor','k','TickLabelInterpreter','none');
+    xlabel(ax,'Weighted decision score'); title(ax,'Feasible Retrofit Alternatives','Color','k');
+    legend(ax,{'Economics','Affordability','Independence'},'Location','southoutside','Orientation','horizontal','Color','w','TextColor','k');
+    xlim(ax,[0 1]); grid(ax,'on');
+    fprintf('\n=== AHP FIGURES GENERATED: 2 ===\n');
+end
