@@ -4,7 +4,9 @@ mcTestSamples=mc.generateSamples(mcDistributions,1000,800);
 assert(isequal(mcTestSamples,mc.generateSamples(mcDistributions,1000,800)));
 assert(all(mcTestSamples>=mcDistributions.Minimum' & mcTestSamples<=mcDistributions.Maximum','all'));
 tic
-mcNominal=mc.evaluateRealization(mcContext,mcDistributions.Mode');
+% Deterministic model is the full-participation reference, not the stochastic mode.
+mcNominalInputs=mcDistributions.Mode'; mcNominalInputs(13)=1;
+mcNominal=mc.evaluateRealization(mcContext,mcNominalInputs);
 fprintf('Nominal evaluator time: %.2f seconds\n',toc);
 mcFields={'InitialInvestment','LifecycleNPV','SelfSufficiency_pct','PVSelfConsumption_pct','GridImports_kWh','GridExports_kWh'};
 for mcK=1:numel(mcFields)
