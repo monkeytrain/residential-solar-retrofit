@@ -58,17 +58,25 @@ set(groot,'defaultFigureColor',theme.background, ...
     end
     sgtitle('Preliminary Annual Operating Savings vs. No Retrofit');
 
-    %% Figure 4 - High-generation day PV vs demand
+    %% Figure 4 - High-generation day: baseline generation, demand, and grid exchange
     dailyPV=sum(reshape(solarAged_kWh,24,365),1);
     [~,selectedDay]=max(dailyPV);
     hourIdx=(selectedDay-1)*24+(1:24);
     hourOfDay=0:23;
-    figure('Name','04 - High-Generation Day PV and Demand','NumberTitle','off');
-    plot(hourOfDay,solarAged_kWh(hourIdx),'LineWidth',2); hold on;
-    plot(hourOfDay,demandHourly_kWh(hourIdx),'LineWidth',2); hold off;
-    xlabel('Hour of day'); ylabel('Average power (kW)');
-    title(sprintf('PV Generation and Household Demand - High-Generation Day %d',selectedDay));
-    legend('Existing PV generation','Household demand','Location','best');
+    figure('Name','04 - High-Generation Day Energy Flows','NumberTitle','off');
+    plot(hourOfDay,solarAged_kWh(hourIdx),'-','LineWidth',2, ...
+        'Color',theme.palette(1,:)); hold on;
+    plot(hourOfDay,demandHourly_kWh(hourIdx),'-','LineWidth',2, ...
+        'Color',theme.palette(2,:));
+    plot(hourOfDay,baseline.gridImport_kWh(hourIdx),'--','LineWidth',2, ...
+        'Color',theme.palette(3,:));
+    plot(hourOfDay,baseline.gridExport_kWh(hourIdx),'--','LineWidth',2, ...
+        'Color',theme.palette(4,:));
+    hold off;
+    xlabel('Hour of day'); ylabel('Hourly energy (kWh)');
+    title(sprintf('Baseline PV, Demand, and Grid Exchange - High-Generation Day %d',selectedDay));
+    legend('Existing PV generation','Household demand','Grid imports','Grid exports', ...
+        'Location','northoutside','Orientation','horizontal');
     xlim([0 23]); xticks([0:2:22 23]); xticklabels(compose('%02d:00',[0:2:22 23])); grid on;
 
     %% Figure 5 - Battery dispatch on same day
