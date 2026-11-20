@@ -19,6 +19,10 @@ A=mcContext.alternatives;
 cost=A.AddedPV_kW*1000*mcDistributions.Maximum(5)+A.BatteryCapacity_kWh*mcDistributions.Maximum(6);
 side=A.Category=="Efficiency" | A.Category=="Load shifting";
 cost(side)=A.InitialInvestment(side);
+effIdx=find(A.Category=="Efficiency");
+for j=1:numel(effIdx)
+    if mcContext.config.efficiencyEstimated(j), cost(effIdx(j))=mcDistributions.Maximum(9+j); end
+end
 mcPilotBounds(:,2)=[0;max([1;cost(isfinite(cost))])];
 mcPilotBounds(:,3)=[0;100];
 mcPilotContext=mcContext;
