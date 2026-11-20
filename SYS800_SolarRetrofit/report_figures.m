@@ -3,23 +3,23 @@
 % All plotting is isolated here; no calculations or verification changed.
 close all;
 
-% Dark figure theme: readable in both MATLAB light and dark desktop modes.
-theme.background = [0.10 0.12 0.15];
-theme.axes = [0.15 0.17 0.21];
-theme.foreground = [0.94 0.95 0.97];
-theme.grid = [0.46 0.49 0.54];
-theme.palette = [0.35 0.75 1.00; 0.98 0.66 0.33; ...
-                 0.45 0.86 0.62; 0.81 0.60 1.00; ...
-                 1.00 0.52 0.64; 0.98 0.83 0.40];
+% Light publication theme: readable in both MATLAB light and dark desktop modes.
+theme.background = [1 1 1];
+theme.axes = [0.96 0.97 0.98];
+theme.foreground = [0.12 0.14 0.17];
+theme.grid = [0.72 0.75 0.79];
+theme.palette = [0.12 0.40 0.68; 0.85 0.38 0.12; ...
+                 0.16 0.55 0.37; 0.48 0.32 0.68; ...
+                 0.72 0.25 0.38; 0.57 0.46 0.12];
 % Figure/axes/text defaults apply to plots created below.
 set(groot,'defaultFigureColor',theme.background, ...
-    'defaultAxesColor',theme.axes, ...
+    'defaultAxesColor',theme.background, ...
     'defaultAxesXColor',theme.foreground, ...
     'defaultAxesYColor',theme.foreground, ...
     'defaultAxesZColor',theme.foreground, ...
     'defaultAxesGridColor',theme.grid, ...
     'defaultAxesColorOrder',theme.palette, ...
-    'defaultTextColor',theme.foreground);
+    'defaultTextColor',theme.foreground,'defaultAxesFontSize',11,'defaultAxesTickLabelInterpreter','none','defaultFigurePosition',[100 100 1150 650]);
 
     %% Figure 1 - Monthly energy balance
     figure('Name','01 - Baseline Monthly Energy Flows','NumberTitle','off');
@@ -36,7 +36,7 @@ set(groot,'defaultFigureColor',theme.background, ...
         plot(retrofitBattery_kWh(idx),retrofitImportReduction_pct(idx),'-o', ...
             'LineWidth',1.7,'DisplayName',sprintf('+%g kW new PV',addedPVSizes(i)));
     end
-    hold off; grid on; xlabel('Battery capacity (kWh)');
+    hold off; grid on; xlabel('Battery capacity (kWh)'); xticks(unique(retrofitBattery_kWh));
     ylabel('Annual grid-import reduction (%)');
     title('Technical Benefit of Solar and Battery Retrofits'); legend('Location','best');
 
@@ -52,7 +52,7 @@ set(groot,'defaultFigureColor',theme.background, ...
             plot(retrofitBattery_kWh(idx),savingsSets{k}(idx),'-o','LineWidth',1.5, ...
                 'DisplayName',sprintf('+%g kW PV',addedPVSizes(i)));
         end
-        hold off; grid on; xlabel('Battery capacity (kWh)');
+        hold off; grid on; xlabel('Battery capacity (kWh)'); xticks(unique(retrofitBattery_kWh));
         ylabel('Annual modeled savings ($/year)'); title(programNames{k});
         if k==3, legend('Location','best'); end
     end
@@ -69,7 +69,7 @@ set(groot,'defaultFigureColor',theme.background, ...
     xlabel('Hour of day'); ylabel('Average power (kW)');
     title(sprintf('PV Generation and Household Demand - High-Generation Day %d',selectedDay));
     legend('Existing PV generation','Household demand','Location','best');
-    xlim([0 23]); xticks(0:2:22); grid on;
+    xlim([0 23]); xticks([0:2:22 23]); xticklabels(compose('%02d:00',[0:2:22 23])); grid on;
 
     %% Figure 5 - Battery dispatch on same day
     battery5=battery;
@@ -80,14 +80,15 @@ set(groot,'defaultFigureColor',theme.background, ...
     tiledlayout(2,1,'TileSpacing','compact');
     nexttile;
     plot(hourOfDay,battery5Simulation.stateOfCharge_kWh(hourIdx),'LineWidth',2);
-    ylabel('Stored energy (kWh)'); title(sprintf('5 kWh Battery Operation - Day %d',selectedDay));
-    ylim([0 5.2]); xlim([0 23]); xticks(0:2:22); grid on;
+    xlabel('Hour of day'); ylabel('Stored energy (kWh)'); title('Battery State of Charge');
+    ylim([0 5.2]); xlim([0 23]); xticks([0:2:22 23]); xticklabels(compose('%02d:00',[0:2:22 23])); grid on;
     nexttile;
     plot(hourOfDay,battery5Simulation.batteryCharge_kWh(hourIdx),'LineWidth',1.8); hold on;
     plot(hourOfDay,battery5Simulation.batteryDischarge_kWh(hourIdx),'LineWidth',1.8); hold off;
     xlabel('Hour of day'); ylabel('Average power (kW)');
+    title('Battery Charging and Discharging'); sgtitle(sprintf('5 kWh Battery Operation - Day %d',selectedDay));
     legend('Battery charging','Battery discharging','Location','best');
-    xlim([0 23]); xticks(0:2:22); grid on;
+    xlim([0 23]); xticks([0:2:22 23]); xticklabels(compose('%02d:00',[0:2:22 23])); grid on;
 
     %% Figure 6 - Reference energy-value savings
     figure('Name','06 - SCE + EPIC Reference Energy Savings','NumberTitle','off'); hold on;
@@ -99,13 +100,13 @@ set(groot,'defaultFigureColor',theme.background, ...
             'MarkerSize',6,'DisplayName',sprintf('+%g kW PV',pvSizes(i)));
     end
     hold off; grid on;
-    xlabel('Battery capacity (kWh)'); ylabel('Annual reference energy-value savings ($/year)');
+    xlabel('Battery capacity (kWh)'); xticks(unique(retrofitBattery_kWh)); ylabel('Annual reference energy-value savings ($/year)');
     title('SCE + EPIC Reference Tariff Comparison'); legend('Location','best');
 
     %% Figure 7 - Combined sensitivity heatmap
     figure('Name','07 - Battery Cost and Rate Sensitivity','NumberTitle','off');
     imagesc(rateEscalationCases2D*100,batteryCostCases,npvCostRateMatrix);
-    set(gca,'YDir','normal'); colorbar;
+    set(gca,'YDir','normal'); cb=colorbar; cb.Label.String='20-year incremental NPV ($)'; xticks(rateEscalationCases2D*100); yticks(batteryCostCases);
     xlabel('Annual real electricity rate escalation (%)');
     ylabel('Installed battery cost ($/kWh)');
     title('5 kWh Battery: 20-Year NPV Sensitivity'); hold on;
@@ -151,7 +152,7 @@ retrofitCases = find(caseNumber ~= baselineCase);
 bestRetrofitCase = retrofitCases(retrofitPosition);
 
 % Draw the table using axes objects, rather than uitable, for reliable
-% dark-theme rendering and clean figure exports.
+% light-theme rendering and clean figure exports.
 fig8 = figure('Name','08 - Economic Decision Matrix', ...
     'NumberTitle','off','Color',theme.background, ...
     'Position',[100 100 1450 810]);
@@ -178,9 +179,9 @@ end
 for r = 1:nCases
     y = r;
     if r == preferredCase
-        fillColor = [0.16 0.31 0.25];  % Best overall: muted green
+        fillColor = [0.83 0.94 0.86];  % Best overall: muted green
     elseif r == bestRetrofitCase
-        fillColor = [0.17 0.25 0.35];  % Best retrofit: muted blue
+        fillColor = [0.85 0.91 0.97];  % Best retrofit: muted blue
     elseif mod(r,2) == 0
         fillColor = theme.axes;
     else
@@ -272,7 +273,7 @@ xlabel('Calendar year'); ylabel('Remaining performance (%)');
 title('Modeled Solar PV and Battery Degradation');
 xlim([calendarYears(1) calendarYears(end)]);
 ylim([60 105]);
-xticks(calendarYears(1):2:calendarYears(end));
+xticks(unique([calendarYears(1):2:calendarYears(end),calendarYears(end)]));
 legend('Location','southwest'); grid on;
 
 %% Figure 10 - Long-term grid import trajectories
@@ -301,7 +302,7 @@ hold off;
 xlabel('Calendar year'); ylabel('Annual grid imports (kWh)');
 title('Long-Term Grid Dependence by Retrofit Strategy');
 xlim([calendarYears(1) calendarYears(end)]);
-xticks(calendarYears(1):2:calendarYears(end));
+xticks(unique([calendarYears(1):2:calendarYears(end),calendarYears(end)]));
 legend('Location','best'); grid on;
 
 %% Figure verification
@@ -333,14 +334,14 @@ if exist('decisionRanking','var') && exist('decisionWeights','var')
     ax=axes; bar(ax,100*decisionWeights);
     xticks(ax,1:3); xticklabels(ax,{'Economics','Affordability','Independence'});
     ylabel(ax,'Weight (%)'); title(ax,sprintf('AHP Criteria Weights (CR = %.3f)',decisionCR),'Color','k');
-    set(ax,'Color','w','XColor','k','YColor','k'); grid(ax,'on'); ylim(ax,[0 100]);
+    set(ax,'Color','w','XColor','k','YColor','k'); grid(ax,'on'); ylim(ax,[0 100]); yticks(ax,0:10:100);
     figure('Name','12 - AHP Alternative Ranking','NumberTitle','off','Color','w');
     ax=axes; rankedDecision=decisionRanking(decisionRanking.Feasible,:);
     barh(ax,[rankedDecision.NPVUtility*decisionWeights(1),rankedDecision.CostUtility*decisionWeights(2),rankedDecision.SSRUtility*decisionWeights(3)],'stacked');
     yticks(ax,1:height(rankedDecision)); yticklabels(ax,rankedDecision.Alternative);
     set(ax,'YDir','reverse','Color','w','XColor','k','YColor','k','TickLabelInterpreter','none');
-    xlabel(ax,'Weighted decision score'); title(ax,'Feasible Retrofit Alternatives','Color','k');
+    xlabel(ax,'Weighted decision score'); title(ax,'AHP Ranking of Feasible Retrofit Alternatives','Color','k');
     legend(ax,{'Economics','Affordability','Independence'},'Location','southoutside','Orientation','horizontal','Color','w','TextColor','k');
-    xlim(ax,[0 1]); grid(ax,'on');
+    xlim(ax,[0 1]); xticks(ax,0:.1:1); grid(ax,'on'); set(gcf,'Position',[100 100 1300 850]);
     fprintf('\n=== AHP FIGURES GENERATED: 2 ===\n');
 end
