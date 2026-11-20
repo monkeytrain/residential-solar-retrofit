@@ -3,7 +3,7 @@ labels=replace(T.Alternative,"+0 kW PV / ","");
 labels=replace(labels," / 0 kWh battery"," PV only");
 labels=replace(labels," kW PV PV only"," kW PV only");
 names={'Household demand','PV production','PV degradation','Battery fade','PV installed cost','Battery installed cost','Import rates','NBT export rates','Real discount rate','5% efficiency cost','10% efficiency cost','15% efficiency cost','Shift participation'};
-units={'Multiplier','Multiplier','%/year','%/year','$/W','$/kWh','Multiplier','Multiplier','%',';
+units={'Multiplier','Multiplier','%/year','%/year','$/W','$/kWh','Multiplier','Multiplier','%','$','$','$','%'};
 scale=[1 1 100 100 1 1 1 1 100 1 1 1 100];
 figure('Name','13 - Sampled distributions','Color','w');
 tiledlayout(4,4);
