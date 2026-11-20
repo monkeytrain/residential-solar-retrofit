@@ -1,7 +1,6 @@
 function c = collectInputs(eff,shift)
 % All limits are homeowner-confirmed planning assumptions, not approvals.
 fprintf('\nConfirm permitted limits with owner/lessor, installer and utility.\n');
-c.ownership = string(input('Existing PV ownership (owned/leased/other): ','s'));
 c.maxBudget = number('Maximum upfront budget ($, Inf for unrestricted): ',0,Inf,true);
 c.maxAddedPV = number('Maximum permitted and compatible added PV (kW; 0 if unconfirmed): ',0,Inf,false);
 c.maxBattery = number('Maximum permitted and compatible battery (kWh; 0 if unconfirmed): ',0,Inf,false);
