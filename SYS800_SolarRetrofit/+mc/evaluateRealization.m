@@ -10,11 +10,15 @@ demandTotal=zeros(n,1); generation=zeros(n,1);
 T.InitialInvestment=T.AddedPV_kW*1000*x(5)+T.BatteryCapacity_kWh*x(6);
 side=T.Category=="Efficiency" | T.Category=="Load shifting";
 T.InitialInvestment(side)=C.alternatives.InitialInvestment(side);
+effIdx=find(T.Category=="Efficiency");
+for j=1:numel(effIdx)
+    if C.config.efficiencyEstimated(j), T.InitialInvestment(effIdx(j))=x(9+j); end
+end
 for i=1:n
     load=d*(1-T.Efficiency_pct(i)/100);
     if T.Shift_kWhDay(i)>0
         z=reshape(load,24,365);
-        avail=sum(z(18:21,:),1); moved=min(avail,T.Shift_kWhDay(i));
+        avail=sum(z(18:21,:),1); moved=min(avail,T.Shift_kWhDay(i)*x(13));
         f=zeros(1,365); ix=avail>0; f(ix)=moved(ix)./avail(ix);
         z(18:21,:)=z(18:21,:).*(1-f);
         z(11:14,:)=z(11:14,:)+moved/4;
