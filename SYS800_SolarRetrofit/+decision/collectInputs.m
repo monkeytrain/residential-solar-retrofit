@@ -7,10 +7,15 @@ c.maxBattery = number('Maximum permitted and compatible battery (kWh; 0 if uncon
 c.allowEfficiency = logical(number('Efficiency improvements feasible? (0=no, 1=yes): ',0,1,false,true));
 c.maxShift = number('Maximum feasible daily load shift (kWh): ',0,Inf,false);
 c.efficiencyCosts = nan(numel(eff),1);
+c.efficiencyEstimated=false(numel(eff),1);
+D=mc.defineDistributions();
 c.shiftCosts = nan(numel(shift),1);
 if c.allowEfficiency
     for i=1:numel(eff)
-        c.efficiencyCosts(i)=cost(sprintf('Upfront cost for %g%% efficiency ($; Enter if unknown): ',100*eff(i)));
+        v=cost(sprintf('Upfront cost for %g%% efficiency ($; Enter for representative estimate %.0f): ',100*eff(i),D.Mode(9+i)));
+        c.efficiencyEstimated(i)=isnan(v);
+        if isnan(v), v=D.Mode(9+i); end
+        c.efficiencyCosts(i)=v;
     end
 end
 for i=1:numel(shift)
