@@ -17,25 +17,26 @@ figure('Name','14 - NPV uncertainty','Color','w');
 ax=axes; hold(ax,'on');
 for i=1:height(S)
     if isfinite(S.MedianNPV(i))
-        plot(ax,[S.P05NPV(i) S.P95NPV(i)]/1000,[i i],'-','LineWidth',2);
+        plot(ax,[S.P05NPV(i) S.P95NPV(i)]/1000,[i i],'-','Color',[0.10 0.35 0.65],'LineWidth',2);
         plot(ax,S.MedianNPV(i)/1000,i,'ko','MarkerSize',4);
     else
         text(ax,0,i,'N/A','VerticalAlignment','middle');
     end
 end
 xline(ax,0,'--'); yticks(ax,1:height(S)); yticklabels(ax,labels); set(ax,'YDir','reverse','TickLabelInterpreter','none');
-title(ax,'Lifecycle NPV Uncertainty'); xlabel(ax,'Incremental NPV ($ thousands): median and 5th–95th percentiles');
+title(ax,'20-Year Incremental NPV Uncertainty'); xlabel(ax,'Incremental NPV ($ thousands): median and 5th–95th percentiles');
 figure('Name','15 - Positive NPV probability','Color','w');
 barh(100*S.ProbabilityPositiveNPV); title('Probability of Positive Incremental NPV'); yticks(1:height(S)); yticklabels(labels); set(gca,'YDir','reverse','TickLabelInterpreter','none'); xlim([0 100]); xlabel('Probability (%)'); hold on;
 for i=find(isnan(S.ProbabilityPositiveNPV))', text(1,i,'N/A - unknown cost'); end
+text(2,1,'Baseline: NPV = $0 by definition','FontSize',9,'Color',[.3 .3 .3]);
 figure('Name','16 - Preferred alternative probability','Color','w');
-W=100*[S.WinFinancial S.WinBalanced S.WinIndependence]; keep=any(W>0,2); barh(W(keep,:)); yticks(1:nnz(keep)); yticklabels(labels(keep)); title('First-Place Probability (Zero-Win Alternatives Omitted)'); set(gca,'YDir','reverse','TickLabelInterpreter','none'); xlim([0 100]); legend('Financial','Balanced','Independence'); xlabel('Unconditional first-place probability (%)');
+W=100*[S.WinFinancial S.WinBalanced S.WinIndependence]; keep=any(W>0,2); barh(W(keep,:)); yticks(1:nnz(keep)); yticklabels(labels(keep)); title('Probability of Ranking First by Preference Profile'); set(gca,'YDir','reverse','TickLabelInterpreter','none'); xlim([0 100]); legend('Financial','Balanced','Independence'); xlabel('First-place probability (%) - alternatives with zero wins omitted');
 figure('Name','17 - NPV sensitivity','Color','w');
 h=imagesc(R,[-1 1]); h.AlphaData=isfinite(R); colorbar; xticks(1:height(T)); xticklabels(labels); xtickangle(60); yticks(1:height(D)); yticklabels(names); set(gca,'TickLabelInterpreter','none'); title('Spearman correlation with lifecycle NPV (gray = undefined)');
 figure('Name','18 - Top-three probability','Color','w');
 barh(100*[S.Top3Financial S.Top3Balanced S.Top3Independence]); yticks(1:height(S)); yticklabels(labels); set(gca,'YDir','reverse'); xlim([0 100]); xticks(0:10:100); xlabel('Unconditional top-three probability (%)'); title('Top-Three Ranking Probability'); legend('Financial','Balanced','Independence');
 figure('Name','19 - Mean rank','Color','w');
-barh([S.MeanRankFinancial S.MeanRankBalanced S.MeanRankIndependence]); yticks(1:height(S)); yticklabels(labels); set(gca,'YDir','reverse'); xlabel('Mean rank when feasible (lower is better)'); title('Mean Alternative Rank'); legend('Financial','Balanced','Independence');
+barh([S.MeanRankFinancial S.MeanRankBalanced S.MeanRankIndependence]); yticks(1:height(S)); yticklabels(labels); set(gca,'YDir','reverse'); xlim([0 height(S)]); xticks(0:3:height(S)); xlabel('Mean rank when feasible (1 = best, 21 = worst)'); title('Mean Alternative Rank'); legend('Financial','Balanced','Independence');
 figure('Name','20 - Decision score uncertainty','Color','w');
 tiledlayout(1,3);
 profiles={'Financial','Balanced','Grid independence'};
@@ -44,11 +45,12 @@ for p=1:3
     for i=1:height(S)
         v=scores(:,i,p); v=v(isfinite(v));
         if isempty(v), continue; end
-        q=prctile(v,[5 50 95]); plot(ax,q([1 3]),[i i],'-','LineWidth',2); plot(ax,q(2),i,'ko','MarkerSize',4);
+        q=prctile(v,[5 50 95]); plot(ax,q([1 3]),[i i],'-','Color',[0.10 0.35 0.65],'LineWidth',2); plot(ax,q(2),i,'ko','MarkerSize',4);
     end
     yticks(ax,1:height(S)); yticklabels(ax,labels); set(ax,'YDir','reverse'); ylim(ax,[.5 height(S)+.5]); xlim(ax,[0 1]); xticks(ax,0:.2:1); title(ax,profiles{p}); xlabel(ax,'Weighted score');
 end
-sgtitle('Decision Score Uncertainty When Feasible (Median and 5th–95th Percentiles)');
+st=sgtitle('Decision Score Uncertainty (Median and 5th–95th Percentiles)');
+set(st,'Color','k','FontWeight','bold');
 % Explicit light presentation.
 for f=findall(groot,'Type','figure')'
     if startsWith(string(f.Name),["13 -","14 -","15 -","16 -","17 -","18 -","19 -","20 -"])
@@ -58,6 +60,7 @@ for f=findall(groot,'Type','figure')'
         if startsWith(string(f.Name),'17 -'), set(findall(f,'Type','axes'),'Color',[.8 .8 .8]); end
         set(findall(f,'Type','colorbar'),'Color','k');
         set(findall(f,'Type','text'),'Color','k');
+        set(findall(f,'Type','axes'),'TickLabelInterpreter','none');
         set(findall(f,'Type','legend'),'Color','w','TextColor','k');
     end
 end
