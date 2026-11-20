@@ -50,6 +50,7 @@ fprintf('\n=== RUNNING TECHNICAL MODEL ===\n');
 run('technical_model.m');
 fprintf('\n=== RUNNING LIFECYCLE ANALYSIS ===\n');
 run('lifecycle_analysis.m');
+run('decision_analysis.m');
 fprintf('\n=== GENERATING REPORT FIGURES ===\n');
 run('report_figures.m');
 fprintf('\n=== INTEGRATED MODEL COMPLETED ===\n');
