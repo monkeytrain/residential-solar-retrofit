@@ -29,9 +29,9 @@ figure('Name','15 - Positive NPV probability','Color','w');
 barh(100*S.ProbabilityPositiveNPV); title('Probability of Positive Incremental NPV'); yticks(1:height(S)); yticklabels(labels); set(gca,'YDir','reverse','TickLabelInterpreter','none'); xlim([0 100]); xlabel('Probability (%)'); hold on;
 for i=find(isnan(S.ProbabilityPositiveNPV))', text(1,i,'N/A - unknown cost'); end
 text(2,1,'Baseline: NPV = $0 by definition','FontSize',9,'Color',[.3 .3 .3]);
-%% Figure 16 - First-place probability with separated alternative groups
+%% Figure 16 - First-place probabilities grouped into clearly gridded rows
 figure('Name','16 - Preferred alternative probability','Color','w', ...
-    'Position',[100 100 1350 850]);
+    'Position',[100 100 1350 750]);
 W=100*[S.WinFinancial S.WinBalanced S.WinIndependence];
 keep=any(W>0,2);
 W=W(keep,:);
@@ -39,24 +39,34 @@ winnerLabels=labels(keep);
 nWinner=size(W,1);
 ax16=axes;
 hold(ax16,'on');
-groupCenters=(1:nWinner)*1.6;
-barOffsets=[-0.28 0 0.28];
+% One grid row per alternative; three closely grouped bars within each row.
+groupCenters=1:nWinner;
+barOffsets=[-0.22 0 0.22];
 barColors=[0.12 0.38 0.69; 0.88 0.37 0.12; 0.18 0.55 0.35];
+% Alternate very light row shading to associate bars with their labels.
+for i=1:nWinner
+    if mod(i,2)==0
+        patch(ax16,[0 110 110 0], ...
+            [i-0.5 i-0.5 i+0.5 i+0.5], ...
+            [0.965 0.97 0.98],'EdgeColor','none', ...
+            'HandleVisibility','off');
+    end
+end
+% Explicit horizontal row boundaries, not lines between individual bars.
+for i=1:nWinner-1
+    yline(ax16,i+0.5,'-','Color',[0.78 0.80 0.83], ...
+        'LineWidth',0.8,'HandleVisibility','off');
+end
 barHandles=gobjects(1,3);
 for p=1:3
-    barHandles(p)=barh(ax16,groupCenters+barOffsets(p),W(:,p),0.24, ...
+    barHandles(p)=barh(ax16,groupCenters+barOffsets(p),W(:,p),0.18, ...
         'FaceColor',barColors(p,:),'EdgeColor','none');
 end
-% Each alternative occupies a distinct band, with separators between bands.
-for i=1:nWinner-1
-    yline(ax16,(groupCenters(i)+groupCenters(i+1))/2, ...
-        '-','Color',[0.85 0.85 0.85],'LineWidth',0.8);
-end
-% Annotate nonzero probabilities, including bars too small to see at 0-100%.
+% Label every nonzero result, including values too small to form a visible bar.
 for i=1:nWinner
     for p=1:3
         if W(i,p)>0
-            text(ax16,min(W(i,p)+1.0,100.5),groupCenters(i)+barOffsets(p), ...
+            text(ax16,W(i,p)+0.8,groupCenters(i)+barOffsets(p), ...
                 sprintf('%.1f%%',W(i,p)), ...
                 'FontSize',9,'VerticalAlignment','middle', ...
                 'HorizontalAlignment','left','Color',barColors(p,:));
@@ -65,9 +75,11 @@ for i=1:nWinner
 end
 yticks(ax16,groupCenters);
 yticklabels(ax16,winnerLabels);
-set(ax16,'YDir','reverse','TickLabelInterpreter','none','FontSize',10);
-ylim(ax16,[groupCenters(1)-0.8 groupCenters(end)+0.8]);
-xlim(ax16,[0 109]);
+set(ax16,'YDir','reverse','TickLabelInterpreter','none','FontSize',10, ...
+    'Layer','top','XGrid','on','GridColor',[0.88 0.89 0.91], ...
+    'GridAlpha',0.55,'YGrid','off');
+ylim(ax16,[0.5 nWinner+0.5]);
+xlim(ax16,[0 110]);
 xticks(ax16,0:10:100);
 xlabel(ax16,'First-place probability (%)');
 title(ax16,'Probability of Ranking First by Preference Profile');
