@@ -29,8 +29,51 @@ figure('Name','15 - Positive NPV probability','Color','w');
 barh(100*S.ProbabilityPositiveNPV); title('Probability of Positive Incremental NPV'); yticks(1:height(S)); yticklabels(labels); set(gca,'YDir','reverse','TickLabelInterpreter','none'); xlim([0 100]); xlabel('Probability (%)'); hold on;
 for i=find(isnan(S.ProbabilityPositiveNPV))', text(1,i,'N/A - unknown cost'); end
 text(2,1,'Baseline: NPV = $0 by definition','FontSize',9,'Color',[.3 .3 .3]);
-figure('Name','16 - Preferred alternative probability','Color','w');
-W=100*[S.WinFinancial S.WinBalanced S.WinIndependence]; keep=any(W>0,2); barh(W(keep,:)); yticks(1:nnz(keep)); yticklabels(labels(keep)); title('Probability of Ranking First by Preference Profile'); set(gca,'YDir','reverse','TickLabelInterpreter','none'); xlim([0 100]); legend('Financial','Balanced','Independence'); xlabel('First-place probability (%) - alternatives with zero wins omitted');
+%% Figure 16 - First-place probability with separated alternative groups
+figure('Name','16 - Preferred alternative probability','Color','w', ...
+    'Position',[100 100 1350 850]);
+W=100*[S.WinFinancial S.WinBalanced S.WinIndependence];
+keep=any(W>0,2);
+W=W(keep,:);
+winnerLabels=labels(keep);
+nWinner=size(W,1);
+ax16=axes;
+hold(ax16,'on');
+groupCenters=(1:nWinner)*1.6;
+barOffsets=[-0.28 0 0.28];
+barColors=[0.12 0.38 0.69; 0.88 0.37 0.12; 0.18 0.55 0.35];
+barHandles=gobjects(1,3);
+for p=1:3
+    barHandles(p)=barh(ax16,groupCenters+barOffsets(p),W(:,p),0.24, ...
+        'FaceColor',barColors(p,:),'EdgeColor','none');
+end
+% Each alternative occupies a distinct band, with separators between bands.
+for i=1:nWinner-1
+    yline(ax16,(groupCenters(i)+groupCenters(i+1))/2, ...
+        '-','Color',[0.85 0.85 0.85],'LineWidth',0.8);
+end
+% Annotate nonzero probabilities, including bars too small to see at 0-100%.
+for i=1:nWinner
+    for p=1:3
+        if W(i,p)>0
+            text(ax16,min(W(i,p)+1.0,100.5),groupCenters(i)+barOffsets(p), ...
+                sprintf('%.1f%%',W(i,p)), ...
+                'FontSize',9,'VerticalAlignment','middle', ...
+                'HorizontalAlignment','left','Color',barColors(p,:));
+        end
+    end
+end
+yticks(ax16,groupCenters);
+yticklabels(ax16,winnerLabels);
+set(ax16,'YDir','reverse','TickLabelInterpreter','none','FontSize',10);
+ylim(ax16,[groupCenters(1)-0.8 groupCenters(end)+0.8]);
+xlim(ax16,[0 109]);
+xticks(ax16,0:10:100);
+xlabel(ax16,'First-place probability (%)');
+title(ax16,'Probability of Ranking First by Preference Profile');
+legend(ax16,barHandles,{'Financial','Balanced','Independence'}, ...
+    'Location','northeast');
+hold(ax16,'off');
 figure('Name','17 - NPV sensitivity','Color','w', ...
     'Position',[50 50 1850 900]);
 ax17=axes('Position',[0.12 0.30 0.81 0.61]);
