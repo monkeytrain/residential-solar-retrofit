@@ -31,8 +31,35 @@ for i=find(isnan(S.ProbabilityPositiveNPV))', text(1,i,'N/A - unknown cost'); en
 text(2,1,'Baseline: NPV = $0 by definition','FontSize',9,'Color',[.3 .3 .3]);
 figure('Name','16 - Preferred alternative probability','Color','w');
 W=100*[S.WinFinancial S.WinBalanced S.WinIndependence]; keep=any(W>0,2); barh(W(keep,:)); yticks(1:nnz(keep)); yticklabels(labels(keep)); title('Probability of Ranking First by Preference Profile'); set(gca,'YDir','reverse','TickLabelInterpreter','none'); xlim([0 100]); legend('Financial','Balanced','Independence'); xlabel('First-place probability (%) - alternatives with zero wins omitted');
-figure('Name','17 - NPV sensitivity','Color','w');
-h=imagesc(R,[-1 1]); h.AlphaData=isfinite(R); colorbar; xticks(1:height(T)); xticklabels(labels); xtickangle(60); yticks(1:height(D)); yticklabels(names); set(gca,'TickLabelInterpreter','none'); title('Spearman correlation with lifecycle NPV (gray = undefined)');
+figure('Name','17 - NPV sensitivity','Color','w', ...
+    'Position',[50 50 1850 900]);
+ax17=axes('Position',[0.12 0.30 0.81 0.61]);
+h=imagesc(ax17,R,[-1 1]);
+h.AlphaData=isfinite(R);
+set(ax17,'Color',[.8 .8 .8],'TickLabelInterpreter','none', ...
+    'FontSize',10,'YDir','normal');
+cb17=colorbar(ax17);
+cb17.Label.String='Spearman rank correlation';
+cb17.Color='k';
+% Compact labels avoid overlapping the 21 alternative names.
+shortLabels=string(labels);
+shortLabels=replace(shortLabels," battery"," batt.");
+shortLabels=replace(shortLabels," kWh batt."," kWh batt.");
+shortLabels=replace(shortLabels," efficiency"," eff.");
+shortLabels=replace(shortLabels," kWh/day shift"," kWh/d shift");
+shortLabels=replace(shortLabels,"No retrofit","No retrofit");
+xticks(ax17,1:height(T)); xticklabels(ax17,shortLabels);
+xtickangle(ax17,55);
+yticks(ax17,1:height(D)); yticklabels(ax17,names);
+xlim(ax17,[.5 height(T)+.5]);
+% Separate the 15 hardware cases, three efficiency cases, and three shifts.
+hold(ax17,'on');
+xline(ax17,15.5,'k-','LineWidth',1.8);
+xline(ax17,18.5,'k-','LineWidth',1.8);
+hold(ax17,'off');
+title(ax17,'Spearman Correlation With 20-Year Incremental NPV');
+xlabel(ax17,'Retrofit alternatives (hardware | efficiency | load shifting)');
+ylabel(ax17,'Uncertain model input');
 figure('Name','18 - Top-three probability','Color','w');
 barh(100*[S.Top3Financial S.Top3Balanced S.Top3Independence]); yticks(1:height(S)); yticklabels(labels); set(gca,'YDir','reverse'); xlim([0 100]); xticks(0:10:100); xlabel('Unconditional top-three probability (%)'); title('Top-Three Ranking Probability'); legend('Financial','Balanced','Independence');
 figure('Name','19 - Mean rank','Color','w');
@@ -56,6 +83,7 @@ for f=findall(groot,'Type','figure')'
     if startsWith(string(f.Name),["13 -","14 -","15 -","16 -","17 -","18 -","19 -","20 -"])
         set(f,'Position',[100 100 1300 850]);
         if startsWith(string(f.Name),'20 -'), set(f,'Position',[50 50 1650 850]); end
+        if startsWith(string(f.Name),'17 -'), set(f,'Position',[50 50 1850 900]); end
         set(findall(f,'Type','axes'),'Color','w','XColor','k','YColor','k');
         if startsWith(string(f.Name),'17 -'), set(findall(f,'Type','axes'),'Color',[.8 .8 .8]); end
         set(findall(f,'Type','colorbar'),'Color','k');
